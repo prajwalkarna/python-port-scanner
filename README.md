@@ -6,7 +6,9 @@ including TCP handshakes, socket programming, and concurrent scanning.
 
 ## 📸 Demo
 
-[![asciicast](https://asciinema.org/a/B8bBL8v0S3ZvP5Zr.svg)](https://asciinema.org/a/B8bBL8v0S3ZvP5Zr)
+<a href="https://asciinema.org/a/B8bBL8v0S3ZvP5Zr" target="_blank">
+  <img src="https://asciinema.org/a/B8bBL8v0S3ZvP5Zr.svg" alt="Demo" width="700"/>
+</a>
 
 ## 🔧 How It Works
 
