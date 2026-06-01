@@ -19,6 +19,61 @@ def scan_port(host, port):
         return None
 
 
+COMMON_PORTS = {
+    22: "SSH",
+    23: "Telnet",
+    25: "SMTP",
+    53: "DNS",
+    80: "HTTP",
+    110: "POP3",
+    143: "IMAP",
+    443: "HTTPS",
+    445: "SMB",
+    631: "CUPS (Printer)",
+    1716: "KDE Connect",
+    3306: "MySQL/MariaDB",
+    5355: "LLMNR",
+    5432: "PostgreSQL",
+    8080: "HTTP-Alt",
+    8443: "HTTPS-Alt",
+}
+
+
+def grab_banner(host, port):
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(2)
+        sock.connect((host, port))
+
+        if port in [80, 8080, 8000, 8443]:
+            sock.send(b"GET / HTTP/1.0\r\nHost:" + host.encode() + b"\r\n\r\n")
+
+        banner_bytes = sock.recv(1024)
+        sock.close()
+
+        banner = ""
+        for byte in banner_bytes:
+            if 32 <= byte <= 126:
+                banner += chr(byte)
+
+        banner = " ".join(banner.split())
+
+        if port == 3306 and banner:
+            import re
+
+            match = re.search(r"[\d]+\.[\d]+\.[\d]+-[\w]+", banner)
+            if match:
+                return f"MariaDB/MySQL {match.group()}"
+
+        if banner:
+            return banner[:50]
+
+    except:
+        pass
+
+    return COMMON_PORTS.get(port, "")
+
+
 def scan_range(host, start_port, end_port, max_threads=100):
     open_ports = []
     ports = range(start_port, end_port + 1)
@@ -50,10 +105,11 @@ def display_results(host, open_ports, start_time):
     if not open_ports:
         print("No open ports found.")
     else:
-        print(f"{'Port':<10}{'STATUS':<10}")
-        print(f" {'-' * 20}")
+        print(f"{'Port':<10}{'STATUS':<10} {'BANNER':<35}")
+        print(f" {'-' * 50}")
         for port in open_ports:
-            print(f" {port:<10} {'OPEN':<10}")
+            banner = banners.get(port, "")
+            print(f" {port:<10} {'OPEN':<10} {banner:<35}")
 
     print(f"\n Scanned in {duration.seconds}.{duration.microseconds // 1000:03d}s")
     print(f"{'=' * 50}\n")
@@ -128,5 +184,10 @@ if __name__ == "__main__":
     start_time = datetime.now()
 
     open_ports = scan_range(host, start_port, end_port, args.threads)
+
+    print("Grabbing banners...")
+    banners = {}
+    for port in open_ports:
+        banners[port] = grab_banner(host, port)
 
     display_results(host, open_ports, start_time)
