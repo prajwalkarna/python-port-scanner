@@ -1,3 +1,4 @@
+import argparse
 import concurrent.futures
 import socket
 from datetime import datetime
@@ -58,11 +59,74 @@ def display_results(host, open_ports, start_time):
     print(f"{'=' * 50}\n")
 
 
+def parse_arguments():
+    parser = argparse.ArgumentParser(
+        description="A fast multi-threaded TCP port scanner",
+        epilog="Example: python scanner.py -t 192.168.1.1 -p 1-1024",
+    )
+
+    parser.add_argument(
+        "-t",
+        "--target",
+        required=True,
+        help="Target host to scan (IP address or hostname)",
+    )
+
+    parser.add_argument(
+        "-p",
+        "--ports",
+        default="1-1024",
+        help="Port range to scan, format: start-end (default: 100)",
+    )
+
+    parser.add_argument(
+        "--threads",
+        type=int,
+        default=100,
+        help="Number of threads to use (default: 100)",
+    )
+
+    return parser.parse_args()
+
+
+def parse_port_range(port_string):
+    try:
+        parts = port_string.split("-")
+
+        if len(parts) != 2:
+            raise ValueError
+
+        start = int(parts[0])
+        end = int(parts[1])
+
+        if not (1 <= start <= 65535) or not (1 <= end <= 65535):
+            raise ValueError("Ports must be between 1 and 65535")
+
+        if start > end:
+            raise ValueError("Start port must be less than end port")
+
+        return start, end
+
+    except ValueError:
+        print("Error: Invalid port range. Use format: 1-1024")
+        exit(1)
+
+
 if __name__ == "__main__":
-    host = "127.0.0.1"
-    start_port = 1
-    end_port = 1024
+    args = parse_arguments()
+
+    try:
+        host = socket.gethostbyname(args.target)
+        if host != args.target:
+            print(f"\n Resolved {args.target} → {host}")
+    except socket.gaierror:
+        print(f"\n Error: Could not resolve hostname '{args.target}'")
+        exit(1)
+
+    start_port, end_port = parse_port_range(args.ports)
+
     start_time = datetime.now()
 
-    open_ports = scan_range(host, start_port, end_port)
+    open_ports = scan_range(host, start_port, end_port, args.threads)
+
     display_results(host, open_ports, start_time)
